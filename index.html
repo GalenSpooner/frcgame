@@ -1,516 +1,68 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FRC Guessing Game</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            min-height: 100vh;
-            color: #fff;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        h1 {
-            text-align: center;
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            background: linear-gradient(90deg, #e94560, #ff6b6b);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .subtitle {
-            text-align: center;
-            color: #a0a0a0;
-            margin-bottom: 30px;
-        }
-
-        .game-info {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            backdrop-filter: blur(10px);
-        }
-
-        .guesses-remaining {
-            text-align: center;
-            font-size: 1.2rem;
-            margin-bottom: 15px;
-        }
-
-        .guesses-remaining span {
-            color: #e94560;
-            font-weight: bold;
-        }
-
-        .input-section {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        input {
-            flex: 1;
-            padding: 12px 16px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #e94560;
-        }
-
-        button {
-            padding: 12px 24px;
-            background: linear-gradient(135deg, #e94560, #ff6b6b);
-            border: none;
-            border-radius: 8px;
-            color: #fff;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .guesses-table {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        .guess-row {
-            display: grid;
-            grid-template-columns: 0.8fr 1.5fr 0.8fr 1fr 1fr;
-            padding: 12px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .guess-row:last-child {
-            border-bottom: none;
-        }
-
-        .guess-row.header {
-            background: rgba(255, 255, 255, 0.1);
-            font-weight: bold;
-        }
-
-        .cell {
-            padding: 8px;
-            text-align: center;
-            border-radius: 6px;
-        }
-
-        .cell.correct {
-            background: #2ecc71;
-            color: #fff;
-        }
-
-        .cell.partial {
-            background: #f39c12;
-            color: #fff;
-        }
-
-        .cell.incorrect {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .message {
-            text-align: center;
-            padding: 20px;
-            margin-top: 20px;
-            border-radius: 12px;
-            font-size: 1.2rem;
-            font-weight: bold;
-        }
-
-        .message.win {
-            background: rgba(46, 204, 113, 0.2);
-            color: #2ecc71;
-        }
-
-        .message.lose {
-            background: rgba(231, 76, 60, 0.2);
-            color: #e74c3c;
-        }
-
-        .new-game-btn {
-            display: block;
-            margin: 20px auto;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #a0a0a0;
-        }
-
-        .error {
-            background: rgba(231, 76, 60, 0.2);
-            color: #e74c3c;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-        }
-
-        .team-number {
-            font-weight: bold;
-        }
-
-        .direction {
-            margin-left: 5px;
-            font-size: 0.8em;
-            opacity: 0.8;
-        }
-
-        .hint {
-            text-align: center;
-            color: #a0a0a0;
-            margin-top: 10px;
-            font-size: 0.9rem;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🤖 FRC Guessing Game</h1>
-        <p class="subtitle">Guess the FRC team based on the clues!</p>
-
-        <div id="loading" class="loading">Loading teams...</div>
-        <div id="error" class="error" style="display: none;"></div>
-
-        <div id="game" style="display: none;">
-            <div class="game-info">
-                <div class="guesses-remaining">
-                    Guesses remaining: <span id="guesses-count">8</span>
-                </div>
-                <div class="input-section">
-                    <input type="text" id="team-input" placeholder="Enter team number (e.g., 254)" autocomplete="off">
-                    <button id="guess-btn" onclick="makeGuess()">Guess</button>
-                </div>
-                <p class="hint">Enter a team number to see how it compares to the mystery team</p>
-            </div>
-
-            <div class="guesses-table">
-                <div class="guess-row header">
-                    <div class="cell">Team #</div>
-                    <div class="cell">Location</div>
-                    <div class="cell">Rookie Year</div>
-                    <div class="cell">District</div>
-                    <div class="cell">Nickname</div>
-                </div>
-                <div id="guesses-container"></div>
-            </div>
-
-            <div id="message" class="message" style="display: none;"></div>
-            <button id="new-game-btn" class="new-game-btn" onclick="startNewGame()" style="display: none;">New Game</button>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FRC Team Guess</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">FRC EPA Guessing Game</p>
+          <h1>Teamdle</h1>
         </div>
-    </div>
+        <button id="new-game" class="ghost-button" type="button">New Team</button>
+      </header>
 
-    <script>
-        // SECURITY NOTE: For production, use environment variables or a backend proxy
-        // This is a simple demo - your API key is visible in the source code
-        const TBA_API_KEY = 'EnBVz1KZA1EfiJ2cvryvNKCNLznrhIFnagXpazRw5sf3sZxgBcmhHAMmIZnQlAw3';
-        const TBA_API_BASE = 'https://www.thebluealliance.com/api/v3';
-        
-        let allTeams = [];
-        let mysteryTeam = null;
-        let guesses = [];
-        const MAX_GUESSES = 8;
-        let gameOver = false;
+      <section class="status-panel" aria-live="polite">
+        <div>
+          <span class="label">Mystery pool</span>
+          <strong id="pool-size">Top EPA teams</strong>
+        </div>
+        <div>
+          <span class="label">Guesses</span>
+          <strong id="guess-count">0 / 8</strong>
+        </div>
+        <div>
+          <span class="label">Result</span>
+          <strong id="result-text">Find the team</strong>
+        </div>
+      </section>
 
-        async function fetchTeams() {
-            try {
-                console.log('Fetching teams with API key:', TBA_API_KEY.substring(0, 10) + '...');
-                // Fetch teams in pages (TBA API paginates)
-                let page = 0;
-                let teams = [];
-                
-                while (true) {
-                    const url = `${TBA_API_BASE}/teams/${2024}/${page}`;
-                    console.log('Fetching:', url);
-                    const response = await fetch(
-                        url,
-                        {
-                            headers: {
-                                'X-TBA-Auth-Key': TBA_API_KEY,
-                                'Accept': 'application/json'
-                            }
-                        }
-                    );
-                    
-                    console.log('Response status:', response.status);
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error('Error response:', errorText);
-                        throw new Error(`API request failed: ${response.status} - ${errorText}`);
-                    }
-                    
-                    const pageTeams = await response.json();
-                    if (!Array.isArray(pageTeams) || pageTeams.length === 0) {
-                        break;
-                    }
-                    
-                    teams = teams.concat(pageTeams);
-                    page++;
-                    
-                    // Limit to first few pages for demo
-                    if (page >= 5) break;
-                }
-                
-                // Filter to popular/good teams
-                // Criteria: teams with lower numbers (historically established), from major districts
-                const popularTeams = teams.filter(team => {
-                    // Include teams with numbers under 5000 (more established teams)
-                    // Or teams from well-known districts
-                    const isEstablished = team.team_number < 5000;
-                    const hasDistrict = team.district !== null;
-                    return isEstablished || hasDistrict;
-                });
-                
-                console.log(`Filtered from ${teams.length} to ${popularTeams.length} popular teams`);
-                return popularTeams;
-            } catch (error) {
-                console.error('Error fetching teams:', error);
-                throw error;
-            }
-        }
+      <section class="guess-panel">
+        <form id="guess-form" autocomplete="off">
+          <label for="team-input">Guess an FRC team</label>
+          <div class="input-row">
+            <input id="team-input" list="team-options" placeholder="Try 254 or Cheesy Poofs">
+            <button type="submit">Guess</button>
+          </div>
+          <datalist id="team-options"></datalist>
+        </form>
+        <p id="message" class="message">Green is exact. Yellow is close or partial. Arrows point toward the answer.</p>
+      </section>
 
-        async function fetchTeamDetails(teamKey) {
-            try {
-                const response = await fetch(
-                    `${TBA_API_BASE}/team/${teamKey}`,
-                    {
-                        headers: {
-                            'X-TBA-Auth-Key': TBA_API_KEY,
-                            'Accept': 'application/json'
-                        }
-                    }
-                );
-                
-                if (!response.ok) {
-                    throw new Error(`API request failed: ${response.status}`);
-                }
-                
-                return await response.json();
-            } catch (error) {
-                console.error('Error fetching team details:', error);
-                throw error;
-            }
-        }
+      <section class="legend" aria-label="Legend">
+        <span><i class="tile exact"></i> Exact</span>
+        <span><i class="tile close"></i> Close</span>
+        <span><i class="tile miss"></i> Miss</span>
+      </section>
 
-        function selectRandomTeam(teams) {
-            const randomIndex = Math.floor(Math.random() * teams.length);
-            return teams[randomIndex];
-        }
+      <section class="table-wrap" aria-label="Guess history">
+        <div class="guess-grid header">
+          <span>Team</span>
+          <span>Name</span>
+          <span>Region</span>
+          <span>District</span>
+          <span>Rookie</span>
+          <span>EPA</span>
+          <span>Win%</span>
+        </div>
+        <div id="guesses" class="guesses"></div>
+      </section>
+    </main>
 
-        function compareTeams(guessTeam, mysteryTeam) {
-            const comparison = {
-                team: guessTeam.team_number,
-                teamNumber: { value: guessTeam.team_number, match: false, direction: '' },
-                location: { value: `${guessTeam.city}, ${guessTeam.state_prov}`, match: false, direction: '' },
-                rookieYear: { value: guessTeam.rookie_year, match: false, direction: '' },
-                district: { value: guessTeam.district ? guessTeam.district.display_name : 'None', match: false },
-                nickname: { value: guessTeam.nickname, match: false }
-            };
-
-            // Compare team number
-            if (guessTeam.team_number === mysteryTeam.team_number) {
-                comparison.teamNumber.match = true;
-            } else if (guessTeam.team_number < mysteryTeam.team_number) {
-                comparison.teamNumber.direction = '↑';
-            } else {
-                comparison.teamNumber.direction = '↓';
-            }
-
-            // Compare location
-            const guessLocation = `${guessTeam.city}, ${guessTeam.state_prov}`;
-            const mysteryLocation = `${mysteryTeam.city}, ${mysteryTeam.state_prov}`;
-            if (guessLocation === mysteryLocation) {
-                comparison.location.match = true;
-            } else if (guessTeam.state_prov === mysteryTeam.state_prov) {
-                comparison.location.direction = 'Same State';
-            } else {
-                comparison.location.direction = 'Different State';
-            }
-
-            // Compare rookie year
-            if (guessTeam.rookie_year === mysteryTeam.rookie_year) {
-                comparison.rookieYear.match = true;
-            } else if (guessTeam.rookie_year < mysteryTeam.rookie_year) {
-                comparison.rookieYear.direction = '↑';
-            } else {
-                comparison.rookieYear.direction = '↓';
-            }
-
-            // Compare district
-            const guessDistrict = guessTeam.district ? guessTeam.district.display_name : 'None';
-            const mysteryDistrict = mysteryTeam.district ? mysteryTeam.district.display_name : 'None';
-            if (guessDistrict === mysteryDistrict) {
-                comparison.district.match = true;
-            }
-
-            // Compare nickname
-            if (guessTeam.nickname === mysteryTeam.nickname) {
-                comparison.nickname.match = true;
-            }
-
-            return comparison;
-        }
-
-        function addGuessToTable(comparison) {
-            const container = document.getElementById('guesses-container');
-            const row = document.createElement('div');
-            row.className = 'guess-row';
-            
-            row.innerHTML = `
-                <div class="cell ${comparison.teamNumber.match ? 'correct' : 'incorrect'}">
-                    ${comparison.teamNumber.value} ${comparison.teamNumber.direction ? `<span class="direction">${comparison.teamNumber.direction}</span>` : ''}
-                </div>
-                <div class="cell ${comparison.location.match ? 'correct' : 'incorrect'}">
-                    ${comparison.location.value} ${comparison.location.direction ? `<span class="direction">${comparison.location.direction}</span>` : ''}
-                </div>
-                <div class="cell ${comparison.rookieYear.match ? 'correct' : 'incorrect'}">
-                    ${comparison.rookieYear.value} ${comparison.rookieYear.direction ? `<span class="direction">${comparison.rookieYear.direction}</span>` : ''}
-                </div>
-                <div class="cell ${comparison.district.match ? 'correct' : 'incorrect'}">
-                    ${comparison.district.value}
-                </div>
-                <div class="cell ${comparison.nickname.match ? 'correct' : 'incorrect'}">
-                    ${comparison.nickname.value}
-                </div>
-            `;
-            
-            container.appendChild(row);
-        }
-
-        function updateGuessesCount() {
-            document.getElementById('guesses-count').textContent = MAX_GUESSES - guesses.length;
-        }
-
-        function showMessage(text, type) {
-            const messageEl = document.getElementById('message');
-            messageEl.textContent = text;
-            messageEl.className = `message ${type}`;
-            messageEl.style.display = 'block';
-        }
-
-        async function makeGuess() {
-            if (gameOver) return;
-
-            const input = document.getElementById('team-input');
-            const teamNumber = input.value.trim();
-            
-            if (!teamNumber) {
-                alert('Please enter a team number');
-                return;
-            }
-
-            const teamKey = `frc${teamNumber}`;
-            
-            try {
-                const guessTeam = await fetchTeamDetails(teamKey);
-                const comparison = compareTeams(guessTeam, mysteryTeam);
-                
-                guesses.push(comparison);
-                addGuessToTable(comparison);
-                updateGuessesCount();
-                
-                input.value = '';
-                
-                // Check if correct
-                if (guessTeam.team_number === mysteryTeam.team_number) {
-                    gameOver = true;
-                    showMessage(`🎉 Correct! The team was ${mysteryTeam.nickname} (FRC${mysteryTeam.team_number})!`, 'win');
-                    document.getElementById('guess-btn').disabled = true;
-                    document.getElementById('new-game-btn').style.display = 'block';
-                    return;
-                }
-                
-                // Check if out of guesses
-                if (guesses.length >= MAX_GUESSES) {
-                    gameOver = true;
-                    showMessage(`Game Over! The team was ${mysteryTeam.nickname} (FRC${mysteryTeam.team_number})`, 'lose');
-                    document.getElementById('guess-btn').disabled = true;
-                    document.getElementById('new-game-btn').style.display = 'block';
-                }
-            } catch (error) {
-                alert('Team not found or API error. Please check the team number and try again.');
-            }
-        }
-
-        async function startNewGame() {
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('game').style.display = 'none';
-            document.getElementById('error').style.display = 'none';
-            
-            guesses = [];
-            gameOver = false;
-            
-            try {
-                allTeams = await fetchTeams();
-                mysteryTeam = selectRandomTeam(allTeams);
-                
-                // Fetch full details for mystery team
-                mysteryTeam = await fetchTeamDetails(mysteryTeam.key);
-                
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('game').style.display = 'block';
-                document.getElementById('guesses-container').innerHTML = '';
-                document.getElementById('message').style.display = 'none';
-                document.getElementById('new-game-btn').style.display = 'none';
-                document.getElementById('guess-btn').disabled = false;
-                updateGuessesCount();
-                
-                console.log('Mystery team:', mysteryTeam); // For debugging
-            } catch (error) {
-                console.error('Full error:', error);
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('error').textContent = `Error: ${error.message}. Check browser console (F12) for details.`;
-            }
-        }
-
-        // Handle Enter key
-        document.getElementById('team-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                makeGuess();
-            }
-        });
-
-        // Start the game when page loads
-        window.onload = startNewGame;
-    </script>
-</body>
+    <script src="script.js"></script>
+  </body>
 </html>
