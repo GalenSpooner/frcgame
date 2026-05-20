@@ -53,6 +53,10 @@ const TEAMS = [
 
 const MAX_GUESSES = 8;
 const answerPool = TEAMS.slice(0, 30);
+TEAMS.forEach((team, index) => {
+  team.rank = index + 1;
+});
+
 const form = document.querySelector("#guess-form");
 const input = document.querySelector("#team-input");
 const datalist = document.querySelector("#team-options");
@@ -63,17 +67,17 @@ const resultTextEl = document.querySelector("#result-text");
 const poolSizeEl = document.querySelector("#pool-size");
 const newGameButton = document.querySelector("#new-game");
 
+let lastAnswerTeam = null;
 let answer;
 let guesses = [];
 let gameOver = false;
 
-function todaySeed() {
-  const day = new Date().toISOString().slice(0, 10);
-  return [...day].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-}
-
 function chooseAnswer() {
-  return answerPool[todaySeed() % answerPool.length];
+  let index = Math.floor(Math.random() * answerPool.length);
+  if (answerPool.length > 1 && answerPool[index].team === lastAnswerTeam) {
+    index = (index + 1) % answerPool.length;
+  }
+  return answerPool[index];
 }
 
 function normalize(value) {
@@ -91,11 +95,19 @@ function arrow(guessValue, answerValue, formatter = (value) => value) {
 }
 
 function closenessClass(key, guess) {
+  if (key === "country") return guess.country === answer.country ? "exact" : "miss";
+  if (key === "state") {
+    if (guess.state && guess.state === answer.state) return "exact";
+    return guess.country === answer.country ? "close" : "miss";
+  }
+  if (key === "district") {
+    return guess.district !== "None" && guess.district === answer.district ? "exact" : "miss";
+  }
+
   if (guess[key] === answer[key]) return "exact";
 
-  if (key === "state" && guess.country === answer.country) return "close";
-  if (key === "district" && guess.district !== "None" && guess.country === answer.country) return "close";
   if (key === "rookie" && Math.abs(guess.rookie - answer.rookie) <= 3) return "close";
+  if (key === "rank" && Math.abs(guess.rank - answer.rank) <= 5) return "close";
   if (key === "epa" && Math.abs(guess.epa - answer.epa) <= 35) return "close";
   if (key === "win" && Math.abs(guess.win - answer.win) <= 5) return "close";
 
@@ -127,9 +139,11 @@ function renderGuess(guess) {
   row.innerHTML = [
     cell(arrow(guess.team, answer.team), teamClass(guess)),
     cell(guess.name, nameClass(guess)),
-    cell(region(guess), closenessClass("state", guess), guess.country === answer.country && guess.state !== answer.state ? "Same country" : ""),
+    cell(guess.country, closenessClass("country", guess)),
+    cell(guess.state || "None", closenessClass("state", guess), guess.country === answer.country && guess.state !== answer.state ? "Same country" : ""),
     cell(guess.district, closenessClass("district", guess)),
     cell(arrow(guess.rookie, answer.rookie), closenessClass("rookie", guess)),
+    cell(arrow(guess.rank, answer.rank, (value) => `#${value}`), closenessClass("rank", guess)),
     cell(arrow(guess.epa, answer.epa), closenessClass("epa", guess)),
     cell(arrow(guess.win, answer.win, (value) => `${value.toFixed(1)}%`), closenessClass("win", guess))
   ].join("");
@@ -202,9 +216,9 @@ function populateOptions() {
     .join("");
 }
 
-function resetGame(randomize = false) {
-  const index = randomize ? Math.floor(Math.random() * answerPool.length) : answerPool.indexOf(chooseAnswer());
-  answer = answerPool[index];
+function resetGame() {
+  answer = chooseAnswer();
+  lastAnswerTeam = answer.team;
   guesses = [];
   gameOver = false;
   guessesEl.innerHTML = "";
@@ -217,6 +231,6 @@ function resetGame(randomize = false) {
 }
 
 form.addEventListener("submit", submitGuess);
-newGameButton.addEventListener("click", () => resetGame(true));
+newGameButton.addEventListener("click", resetGame);
 populateOptions();
-resetGame(false);
+resetGame();

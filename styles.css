@@ -80,6 +80,7 @@ h1 {
 
 .status-panel,
 .guess-panel,
+.instructions,
 .table-wrap {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -110,6 +111,35 @@ h1 {
 
 .guess-panel {
   padding: 18px;
+}
+
+.instructions {
+  margin-top: 14px;
+  padding: 16px;
+}
+
+.instructions h2 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.rule-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.rule-grid span {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  border: 1px solid #3e493f;
+  border-radius: 6px;
+  background: #151a17;
+  color: var(--muted);
+  padding: 8px 10px;
+  font-size: 0.84rem;
+  font-weight: 700;
 }
 
 label {
@@ -182,8 +212,8 @@ input:focus {
 
 .guess-grid {
   display: grid;
-  grid-template-columns: 0.75fr 1.55fr 1fr 0.85fr 0.75fr 0.75fr 0.75fr;
-  min-width: 820px;
+  grid-template-columns: 0.72fr 1.4fr 0.82fr 0.68fr 0.8fr 0.72fr 0.68fr 0.72fr 0.72fr;
+  min-width: 980px;
   gap: 1px;
 }
 
@@ -267,6 +297,10 @@ input:focus {
   }
 
   .status-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .rule-grid {
     grid-template-columns: 1fr;
   }
 
