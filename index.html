@@ -112,7 +112,7 @@
 
         .guess-row {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr;
+            grid-template-columns: 0.8fr 1.5fr 0.8fr 1fr 1fr;
             padding: 12px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
@@ -188,6 +188,12 @@
             font-weight: bold;
         }
 
+        .direction {
+            margin-left: 5px;
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+
         .hint {
             text-align: center;
             color: #a0a0a0;
@@ -218,10 +224,11 @@
 
             <div class="guesses-table">
                 <div class="guess-row header">
-                    <div class="cell">Team</div>
+                    <div class="cell">Team #</div>
                     <div class="cell">Location</div>
                     <div class="cell">Rookie Year</div>
                     <div class="cell">District</div>
+                    <div class="cell">Nickname</div>
                 </div>
                 <div id="guesses-container"></div>
             </div>
@@ -282,7 +289,18 @@
                     if (page >= 5) break;
                 }
                 
-                return teams;
+                // Filter to popular/good teams
+                // Criteria: teams with lower numbers (historically established), from major districts
+                const popularTeams = teams.filter(team => {
+                    // Include teams with numbers under 5000 (more established teams)
+                    // Or teams from well-known districts
+                    const isEstablished = team.team_number < 5000;
+                    const hasDistrict = team.district !== null;
+                    return isEstablished || hasDistrict;
+                });
+                
+                console.log(`Filtered from ${teams.length} to ${popularTeams.length} popular teams`);
+                return popularTeams;
             } catch (error) {
                 console.error('Error fetching teams:', error);
                 throw error;
@@ -320,21 +338,40 @@
         function compareTeams(guessTeam, mysteryTeam) {
             const comparison = {
                 team: guessTeam.team_number,
-                location: { value: `${guessTeam.city}, ${guessTeam.state_prov}`, match: false },
-                rookieYear: { value: guessTeam.rookie_year, match: false },
-                district: { value: guessTeam.district ? guessTeam.district.display_name : 'None', match: false }
+                teamNumber: { value: guessTeam.team_number, match: false, direction: '' },
+                location: { value: `${guessTeam.city}, ${guessTeam.state_prov}`, match: false, direction: '' },
+                rookieYear: { value: guessTeam.rookie_year, match: false, direction: '' },
+                district: { value: guessTeam.district ? guessTeam.district.display_name : 'None', match: false },
+                nickname: { value: guessTeam.nickname, match: false }
             };
+
+            // Compare team number
+            if (guessTeam.team_number === mysteryTeam.team_number) {
+                comparison.teamNumber.match = true;
+            } else if (guessTeam.team_number < mysteryTeam.team_number) {
+                comparison.teamNumber.direction = '↑';
+            } else {
+                comparison.teamNumber.direction = '↓';
+            }
 
             // Compare location
             const guessLocation = `${guessTeam.city}, ${guessTeam.state_prov}`;
             const mysteryLocation = `${mysteryTeam.city}, ${mysteryTeam.state_prov}`;
             if (guessLocation === mysteryLocation) {
                 comparison.location.match = true;
+            } else if (guessTeam.state_prov === mysteryTeam.state_prov) {
+                comparison.location.direction = 'Same State';
+            } else {
+                comparison.location.direction = 'Different State';
             }
 
             // Compare rookie year
             if (guessTeam.rookie_year === mysteryTeam.rookie_year) {
                 comparison.rookieYear.match = true;
+            } else if (guessTeam.rookie_year < mysteryTeam.rookie_year) {
+                comparison.rookieYear.direction = '↑';
+            } else {
+                comparison.rookieYear.direction = '↓';
             }
 
             // Compare district
@@ -342,6 +379,11 @@
             const mysteryDistrict = mysteryTeam.district ? mysteryTeam.district.display_name : 'None';
             if (guessDistrict === mysteryDistrict) {
                 comparison.district.match = true;
+            }
+
+            // Compare nickname
+            if (guessTeam.nickname === mysteryTeam.nickname) {
+                comparison.nickname.match = true;
             }
 
             return comparison;
@@ -353,10 +395,21 @@
             row.className = 'guess-row';
             
             row.innerHTML = `
-                <div class="cell team-number">${comparison.team}</div>
-                <div class="cell ${comparison.location.match ? 'correct' : 'incorrect'}">${comparison.location.value}</div>
-                <div class="cell ${comparison.rookieYear.match ? 'correct' : 'incorrect'}">${comparison.rookieYear.value}</div>
-                <div class="cell ${comparison.district.match ? 'correct' : 'incorrect'}">${comparison.district.value}</div>
+                <div class="cell ${comparison.teamNumber.match ? 'correct' : 'incorrect'}">
+                    ${comparison.teamNumber.value} ${comparison.teamNumber.direction ? `<span class="direction">${comparison.teamNumber.direction}</span>` : ''}
+                </div>
+                <div class="cell ${comparison.location.match ? 'correct' : 'incorrect'}">
+                    ${comparison.location.value} ${comparison.location.direction ? `<span class="direction">${comparison.location.direction}</span>` : ''}
+                </div>
+                <div class="cell ${comparison.rookieYear.match ? 'correct' : 'incorrect'}">
+                    ${comparison.rookieYear.value} ${comparison.rookieYear.direction ? `<span class="direction">${comparison.rookieYear.direction}</span>` : ''}
+                </div>
+                <div class="cell ${comparison.district.match ? 'correct' : 'incorrect'}">
+                    ${comparison.district.value}
+                </div>
+                <div class="cell ${comparison.nickname.match ? 'correct' : 'incorrect'}">
+                    ${comparison.nickname.value}
+                </div>
             `;
             
             container.appendChild(row);
