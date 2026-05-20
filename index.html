@@ -245,13 +245,16 @@
 
         async function fetchTeams() {
             try {
+                console.log('Fetching teams with API key:', TBA_API_KEY.substring(0, 10) + '...');
                 // Fetch teams in pages (TBA API paginates)
                 let page = 0;
                 let teams = [];
                 
                 while (true) {
+                    const url = `${TBA_API_BASE}/teams/${2024}/${page}`;
+                    console.log('Fetching:', url);
                     const response = await fetch(
-                        `${TBA_API_BASE}/teams/${2024}/${page}`,
+                        url,
                         {
                             headers: {
                                 'X-TBA-Auth-Key': TBA_API_KEY,
@@ -260,8 +263,11 @@
                         }
                     );
                     
+                    console.log('Response status:', response.status);
                     if (!response.ok) {
-                        throw new Error(`API request failed: ${response.status}`);
+                        const errorText = await response.text();
+                        console.error('Error response:', errorText);
+                        throw new Error(`API request failed: ${response.status} - ${errorText}`);
                     }
                     
                     const pageTeams = await response.json();
@@ -436,9 +442,10 @@
                 
                 console.log('Mystery team:', mysteryTeam); // For debugging
             } catch (error) {
+                console.error('Full error:', error);
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('error').style.display = 'block';
-                document.getElementById('error').textContent = `Error: ${error.message}. Please make sure you've added your TBA API key in the code.`;
+                document.getElementById('error').textContent = `Error: ${error.message}. Check browser console (F12) for details.`;
             }
         }
 
