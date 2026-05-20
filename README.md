@@ -33,13 +33,15 @@ You need a free API key from The Blue Alliance to fetch team data:
 
 ### 2. Add Your API Key
 
-Open `index.html` in a text editor and find this line near the top of the script:
+Copy `config.example.js` to `config.js`:
 
-```javascript
-const TBA_API_KEY = 'YOUR_TBA_API_KEY_HERE';
+```bash
+cp config.example.js config.js
 ```
 
-Replace `YOUR_TBA_API_KEY_HERE` with your actual API key.
+Then open `config.js` in a text editor and replace `YOUR_TBA_API_KEY_HERE` with your actual API key.
+
+**Security Note**: The `config.js` file is excluded from git via `.gitignore` to keep your API key private. Never commit your actual API key to a public repository.
 
 ### 3. Run the Game
 
