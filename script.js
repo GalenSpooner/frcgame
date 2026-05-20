@@ -90,7 +90,7 @@ function region(team) {
 
 function arrow(guessValue, answerValue, formatter = (value) => value) {
   if (guessValue === answerValue) return formatter(guessValue);
-  const direction = guessValue < answerValue ? "↑" : "↓";
+  const direction = guessValue < answerValue ? "\u2191" : "\u2193";
   return `${formatter(guessValue)} ${direction}`;
 }
 
@@ -119,8 +119,9 @@ function teamClass(guess) {
 }
 
 function nameClass(guess) {
-  const answerWords = normalize(answer.name).split(/\W+/).filter(Boolean);
-  const guessWords = normalize(guess.name).split(/\W+/).filter(Boolean);
+  const ignoredWords = new Set(["a", "an", "and", "bot", "frc", "of", "robot", "robotics", "team", "the"]);
+  const answerWords = normalize(answer.name).split(/\W+/).filter((word) => word.length > 2 && !ignoredWords.has(word));
+  const guessWords = normalize(guess.name).split(/\W+/).filter((word) => word.length > 2 && !ignoredWords.has(word));
   return guess.name === answer.name
     ? "exact"
     : guessWords.some((word) => answerWords.includes(word))

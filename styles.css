@@ -123,23 +123,36 @@ h1 {
   font-size: 1rem;
 }
 
-.rule-grid {
+.hint-rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 8px;
 }
 
-.rule-grid span {
-  min-height: 38px;
-  display: flex;
-  align-items: center;
+.hint-rules li {
+  min-height: 58px;
+  display: grid;
+  align-content: center;
+  gap: 3px;
   border: 1px solid #3e493f;
   border-radius: 6px;
   background: #151a17;
+  padding: 10px 12px;
+}
+
+.hint-rules strong {
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.hint-rules span {
   color: var(--muted);
-  padding: 8px 10px;
   font-size: 0.84rem;
   font-weight: 700;
+  line-height: 1.25;
 }
 
 label {
@@ -300,7 +313,7 @@ input:focus {
     grid-template-columns: 1fr;
   }
 
-  .rule-grid {
+  .hint-rules {
     grid-template-columns: 1fr;
   }
 
