@@ -111,24 +111,6 @@ function regionLabel(team) {
   return team.district === "None" ? "Regional" : team.district;
 }
 
-function numberBand(teamNumber) {
-  const low = Math.floor(teamNumber / 1000) * 1000;
-  return `${low}-${low + 999}`;
-}
-
-function rookieEra(year) {
-  if (year < 2000) return "90s original-era team";
-  if (year < 2010) return "2000s veteran team";
-  if (year < 2020) return "2010s team";
-  return "2020s team";
-}
-
-function epaTier(rank) {
-  if (rank <= 10) return "Top 10 EPA";
-  if (rank <= 20) return "Top 20 EPA";
-  return "Top 30 EPA";
-}
-
 function arrow(guessValue, answerValue, formatter = (value) => value) {
   if (guessValue === answerValue) return formatter(guessValue);
   const direction = guessValue < answerValue ? "\u2191" : "\u2193";
@@ -259,14 +241,15 @@ function updateStats() {
 }
 
 function updateStarterHint() {
-  hintTitleEl.textContent = "Pre-match scouting notes";
+  hintTitleEl.textContent = "Soft signal";
   const hints = [
-    `${numberBand(answer.team)} team number band`,
-    rookieEra(answer.rookie),
-    epaTier(answer.rank),
-    `${answer.country} program`
+    answer.team % 2 === 0 ? "Even-numbered team" : "Odd-numbered team",
+    answer.rookie < 2010 ? "Veteran program" : "Newer-era program",
+    answer.district === "None" ? "Plays outside the district model" : "District-system team",
+    answer.rank <= answerPool.length / 2 ? "Upper half of this pool" : "Lower half of this pool"
   ];
-  hintChipsEl.innerHTML = hints.map((hint) => `<span>${hint}</span>`).join("");
+  const hint = hints[(answer.team + answer.rank) % hints.length];
+  hintChipsEl.innerHTML = `<span>${hint}</span>`;
 }
 
 function updateLeaderboard() {
