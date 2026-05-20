@@ -101,9 +101,12 @@ h1 {
 
 .status-panel,
 .stats-panel,
+.starter-hint,
 .guess-panel,
 .instructions,
-.table-wrap {
+.table-wrap,
+.share-panel,
+.leaderboard-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(25, 29, 26, 0.92);
@@ -167,6 +170,37 @@ h1 {
   display: block;
   margin-top: 4px;
   font-size: 1.25rem;
+}
+
+.starter-hint {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(0, 2fr);
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 16px;
+}
+
+.starter-hint strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 1.2rem;
+}
+
+.hint-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hint-chips span {
+  border: 1px solid #3f4b43;
+  border-radius: 999px;
+  background: #111815;
+  color: var(--text);
+  padding: 8px 11px;
+  font-size: 0.86rem;
+  font-weight: 800;
 }
 
 .guess-panel {
@@ -359,6 +393,77 @@ input:focus {
   font-weight: 700;
 }
 
+.share-panel,
+.leaderboard-panel {
+  margin-top: 14px;
+  padding: 16px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.share-panel textarea {
+  width: 100%;
+  min-height: 128px;
+  resize: vertical;
+  border: 1px solid #536055;
+  border-radius: 8px;
+  background: #0f1412;
+  color: var(--text);
+  padding: 12px;
+  font: 750 0.92rem ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+}
+
+.leaderboard-list {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.leaderboard-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #3e493f;
+  border-radius: 6px;
+  background: #151a17;
+  padding: 10px 12px;
+}
+
+.leaderboard-list strong {
+  font-size: 0.95rem;
+}
+
+.leaderboard-list span,
+.leaderboard-list small {
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.leaderboard-list small {
+  display: block;
+  margin-top: 2px;
+}
+
+.leaderboard-empty {
+  display: block;
+  color: var(--muted);
+  font-weight: 750;
+}
+
 .empty-state {
   min-width: 980px;
   padding: 28px 18px;
@@ -393,6 +498,7 @@ input:focus {
   }
 
   .status-panel,
+  .starter-hint,
   .stats-panel {
     grid-template-columns: 1fr;
   }

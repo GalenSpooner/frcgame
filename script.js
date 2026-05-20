@@ -53,6 +53,7 @@ const TEAMS = [
 
 const MAX_GUESSES = 8;
 const STATS_KEY = "botdle-stats-v1";
+const LEADERBOARD_KEY = "botdle-leaderboard-v1";
 const answerPool = TEAMS.slice(0, 30);
 TEAMS.forEach((team, index) => {
   team.rank = index + 1;
@@ -72,6 +73,13 @@ const statPlayedEl = document.querySelector("#stat-played");
 const statWinrateEl = document.querySelector("#stat-winrate");
 const statStreakEl = document.querySelector("#stat-streak");
 const statBestEl = document.querySelector("#stat-best");
+const hintTitleEl = document.querySelector("#hint-title");
+const hintChipsEl = document.querySelector("#hint-chips");
+const sharePanelEl = document.querySelector("#share-panel");
+const shareOutputEl = document.querySelector("#share-output");
+const copyShareButton = document.querySelector("#copy-share");
+const leaderboardListEl = document.querySelector("#leaderboard-list");
+const clearLeaderboardButton = document.querySelector("#clear-leaderboard");
 const newGameButton = document.querySelector("#new-game");
 const giveUpButton = document.querySelector("#give-up");
 const shareButton = document.querySelector("#share-game");
@@ -81,6 +89,7 @@ let answer;
 let guesses = [];
 let gameOver = false;
 let stats = loadStats();
+let leaderboard = loadLeaderboard();
 
 function chooseAnswer() {
   let index = Math.floor(Math.random() * answerPool.length);
@@ -96,6 +105,28 @@ function normalize(value) {
 
 function region(team) {
   return team.state ? `${team.state}, ${team.country}` : team.country;
+}
+
+function regionLabel(team) {
+  return team.district === "None" ? "Regional" : team.district;
+}
+
+function numberBand(teamNumber) {
+  const low = Math.floor(teamNumber / 1000) * 1000;
+  return `${low}-${low + 999}`;
+}
+
+function rookieEra(year) {
+  if (year < 2000) return "90s original-era team";
+  if (year < 2010) return "2000s veteran team";
+  if (year < 2020) return "2010s team";
+  return "2020s team";
+}
+
+function epaTier(rank) {
+  if (rank <= 10) return "Top 10 EPA";
+  if (rank <= 20) return "Top 20 EPA";
+  return "Top 30 EPA";
 }
 
 function arrow(guessValue, answerValue, formatter = (value) => value) {
@@ -117,7 +148,8 @@ function closenessClass(key, guess) {
     return guess.country === answer.country ? "close" : "miss";
   }
   if (key === "district") {
-    return guess.district !== "None" && guess.district === answer.district ? "exact" : "miss";
+    if (guess.district === answer.district) return "exact";
+    return guess.country === answer.country ? "close" : "miss";
   }
 
   if (guess[key] === answer[key]) return "exact";
@@ -173,7 +205,7 @@ function renderGuess(guess) {
     cell(guess.name, classes[1]),
     cell(guess.country, classes[2]),
     cell(guess.state || "None", classes[3], guess.country === answer.country && guess.state !== answer.state ? "Same country" : ""),
-    cell(guess.district, classes[4]),
+    cell(regionLabel(guess), classes[4]),
     cell(arrow(guess.rookie, answer.rookie), classes[5]),
     cell(rankArrow(guess.rank, answer.rank), classes[6]),
     cell(arrow(guess.epa, answer.epa), classes[7]),
@@ -203,8 +235,20 @@ function loadStats() {
   }
 }
 
+function loadLeaderboard() {
+  try {
+    return JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
 function saveStats() {
   localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+}
+
+function saveLeaderboard() {
+  localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboard));
 }
 
 function updateStats() {
@@ -214,12 +258,55 @@ function updateStats() {
   statBestEl.textContent = stats.best ? `${stats.best}` : "-";
 }
 
+function updateStarterHint() {
+  hintTitleEl.textContent = "Pre-match scouting notes";
+  const hints = [
+    `${numberBand(answer.team)} team number band`,
+    rookieEra(answer.rookie),
+    epaTier(answer.rank),
+    `${answer.country} program`
+  ];
+  hintChipsEl.innerHTML = hints.map((hint) => `<span>${hint}</span>`).join("");
+}
+
+function updateLeaderboard() {
+  if (!leaderboard.length) {
+    leaderboardListEl.innerHTML = `<li class="leaderboard-empty">No solved games yet.</li>`;
+    return;
+  }
+
+  leaderboardListEl.innerHTML = leaderboard
+    .slice(0, 7)
+    .map((entry, index) => `
+      <li>
+        <strong>#${index + 1}</strong>
+        <span>${entry.team} - ${entry.name}<small>${entry.date}</small></span>
+        <strong>${entry.guesses}/${MAX_GUESSES}</strong>
+      </li>
+    `)
+    .join("");
+}
+
+function addLeaderboardEntry() {
+  leaderboard.push({
+    team: answer.team,
+    name: answer.name,
+    guesses: guesses.length,
+    date: new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" })
+  });
+  leaderboard.sort((a, b) => a.guesses - b.guesses || a.team - b.team);
+  leaderboard = leaderboard.slice(0, 20);
+  saveLeaderboard();
+  updateLeaderboard();
+}
+
 function recordResult(won) {
   stats.played += 1;
   if (won) {
     stats.wins += 1;
     stats.streak += 1;
     stats.best = stats.best ? Math.min(stats.best, guesses.length) : guesses.length;
+    addLeaderboardEntry();
   } else {
     stats.streak = 0;
   }
@@ -243,7 +330,7 @@ function revealAnswer(prefix) {
   card.className = "answer-card";
   card.innerHTML = `
     <strong>${prefix} ${answer.team} - ${answer.name}</strong>
-    <span>${region(answer)} · ${answer.district} district · #${answer.rank} EPA rank · ${answer.epa} EPA · ${answer.win.toFixed(1)}% win rate</span>
+    <span>${region(answer)} | ${regionLabel(answer)} | #${answer.rank} EPA rank | ${answer.epa} EPA | ${answer.win.toFixed(1)}% win rate</span>
   `;
   guessesEl.before(card);
 }
@@ -256,6 +343,7 @@ function finishGame(won, message) {
   giveUpButton.disabled = true;
   shareButton.disabled = false;
   emptyStateEl.hidden = true;
+  renderShareOutput();
   recordResult(won);
 }
 
@@ -306,17 +394,43 @@ function shareText() {
   const rows = guesses
     .map((guess) => clueClasses(guess).map((className) => squares[className]).join(""))
     .join("\n");
-  return `Botdle ${score}\n${rows}\nAnswer: ${answer.team} - ${answer.name}`;
+  return `Botdle ${score}\n${rows || "No guesses"}\nAnswer: ${answer.team} - ${answer.name}`;
+}
+
+function renderShareOutput() {
+  shareOutputEl.value = shareText();
+  sharePanelEl.hidden = false;
+}
+
+function legacyCopy(text) {
+  shareOutputEl.focus();
+  shareOutputEl.select();
+  return document.execCommand && document.execCommand("copy");
 }
 
 async function shareGame() {
   const text = shareText();
+  renderShareOutput();
   try {
-    await navigator.clipboard.writeText(text);
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else if (!legacyCopy(text)) {
+      throw new Error("Clipboard unavailable");
+    }
     messageEl.textContent = "Result copied to clipboard.";
   } catch {
-    messageEl.textContent = text;
+    messageEl.textContent = "Share text is ready below.";
   }
+}
+
+async function copyShareOutput() {
+  await shareGame();
+}
+
+function clearLeaderboard() {
+  leaderboard = [];
+  saveLeaderboard();
+  updateLeaderboard();
 }
 
 function populateOptions() {
@@ -338,8 +452,12 @@ function resetGame() {
   input.disabled = false;
   giveUpButton.disabled = false;
   shareButton.disabled = true;
+  sharePanelEl.hidden = true;
+  shareOutputEl.value = "";
+  updateStarterHint();
   updateStatus();
   updateStats();
+  updateLeaderboard();
   input.focus();
 }
 
@@ -347,5 +465,7 @@ form.addEventListener("submit", submitGuess);
 newGameButton.addEventListener("click", resetGame);
 giveUpButton.addEventListener("click", giveUp);
 shareButton.addEventListener("click", shareGame);
+copyShareButton.addEventListener("click", copyShareOutput);
+clearLeaderboardButton.addEventListener("click", clearLeaderboard);
 populateOptions();
 resetGame();

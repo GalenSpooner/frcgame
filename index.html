@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Botdle</title>
-    <link rel="stylesheet" href="styles.css?v=6">
+    <link rel="stylesheet" href="styles.css?v=7">
   </head>
   <body>
     <main class="app-shell">
@@ -46,6 +46,14 @@
         <div><span class="label">Best</span><strong id="stat-best">-</strong></div>
       </section>
 
+      <section class="starter-hint" aria-label="Opening hint">
+        <div>
+          <span class="label">Opening hint</span>
+          <strong id="hint-title">Scouting card loading</strong>
+        </div>
+        <div id="hint-chips" class="hint-chips"></div>
+      </section>
+
       <section class="guess-panel">
         <form id="guess-form" autocomplete="off">
           <label for="team-input">Guess an FRC team</label>
@@ -65,7 +73,7 @@
           <li><strong>Name</strong><span>Yellow when a meaningful word overlaps.</span></li>
           <li><strong>Country</strong><span>Green only on exact match.</span></li>
           <li><strong>State</strong><span>Yellow for same country, different state.</span></li>
-          <li><strong>District</strong><span>Green only on exact real district.</span></li>
+          <li><strong>Region</strong><span>Green exact, yellow for same country.</span></li>
           <li><strong>Rookie</strong><span>Yellow within 3 years.</span></li>
           <li><strong>EPA Rank</strong><span>Yellow within 5 ranking spots.</span></li>
           <li><strong>EPA / Win%</strong><span>Yellow within 35 EPA or 5 win points.</span></li>
@@ -84,7 +92,7 @@
           <span>Name</span>
           <span>Country</span>
           <span>State</span>
-          <span>District</span>
+          <span>Region</span>
           <span>Rookie</span>
           <span>Rank</span>
           <span>EPA</span>
@@ -93,8 +101,24 @@
         <div id="guesses" class="guesses"></div>
         <div id="empty-state" class="empty-state">No guesses yet. Take a swing.</div>
       </section>
+
+      <section id="share-panel" class="share-panel" hidden aria-label="Share result">
+        <div class="section-heading">
+          <h2>Share result</h2>
+          <button id="copy-share" class="ghost-button" type="button">Copy</button>
+        </div>
+        <textarea id="share-output" readonly></textarea>
+      </section>
+
+      <section class="leaderboard-panel" aria-label="Local leaderboard">
+        <div class="section-heading">
+          <h2>Local leaderboard</h2>
+          <button id="clear-leaderboard" class="ghost-button" type="button">Clear</button>
+        </div>
+        <ol id="leaderboard-list" class="leaderboard-list"></ol>
+      </section>
     </main>
 
-    <script src="script.js?v=6"></script>
+    <script src="script.js?v=7"></script>
   </body>
 </html>
