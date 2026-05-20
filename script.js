@@ -52,6 +52,7 @@ const TEAMS = [
 ];
 
 const MAX_GUESSES = 8;
+const STATS_KEY = "botdle-stats-v1";
 const answerPool = TEAMS.slice(0, 30);
 TEAMS.forEach((team, index) => {
   team.rank = index + 1;
@@ -65,12 +66,21 @@ const messageEl = document.querySelector("#message");
 const guessCountEl = document.querySelector("#guess-count");
 const resultTextEl = document.querySelector("#result-text");
 const poolSizeEl = document.querySelector("#pool-size");
+const progressFillEl = document.querySelector("#progress-fill");
+const emptyStateEl = document.querySelector("#empty-state");
+const statPlayedEl = document.querySelector("#stat-played");
+const statWinrateEl = document.querySelector("#stat-winrate");
+const statStreakEl = document.querySelector("#stat-streak");
+const statBestEl = document.querySelector("#stat-best");
 const newGameButton = document.querySelector("#new-game");
+const giveUpButton = document.querySelector("#give-up");
+const shareButton = document.querySelector("#share-game");
 
 let lastAnswerTeam = null;
 let answer;
 let guesses = [];
 let gameOver = false;
+let stats = loadStats();
 
 function chooseAnswer() {
   let index = Math.floor(Math.random() * answerPool.length);
@@ -135,6 +145,20 @@ function nameClass(guess) {
       : "miss";
 }
 
+function clueClasses(guess) {
+  return [
+    teamClass(guess),
+    nameClass(guess),
+    closenessClass("country", guess),
+    closenessClass("state", guess),
+    closenessClass("district", guess),
+    closenessClass("rookie", guess),
+    closenessClass("rank", guess),
+    closenessClass("epa", guess),
+    closenessClass("win", guess)
+  ];
+}
+
 function cell(content, className, detail = "") {
   const detailMarkup = detail ? `<small>${detail}</small>` : "";
   return `<div class="cell ${className}"><span>${content}${detailMarkup}</span></div>`;
@@ -143,16 +167,17 @@ function cell(content, className, detail = "") {
 function renderGuess(guess) {
   const row = document.createElement("div");
   row.className = "guess-grid guess-row";
+  const classes = clueClasses(guess);
   row.innerHTML = [
-    cell(arrow(guess.team, answer.team), teamClass(guess)),
-    cell(guess.name, nameClass(guess)),
-    cell(guess.country, closenessClass("country", guess)),
-    cell(guess.state || "None", closenessClass("state", guess), guess.country === answer.country && guess.state !== answer.state ? "Same country" : ""),
-    cell(guess.district, closenessClass("district", guess)),
-    cell(arrow(guess.rookie, answer.rookie), closenessClass("rookie", guess)),
-    cell(rankArrow(guess.rank, answer.rank), closenessClass("rank", guess)),
-    cell(arrow(guess.epa, answer.epa), closenessClass("epa", guess)),
-    cell(arrow(guess.win, answer.win, (value) => `${value.toFixed(1)}%`), closenessClass("win", guess))
+    cell(arrow(guess.team, answer.team), classes[0]),
+    cell(guess.name, classes[1]),
+    cell(guess.country, classes[2]),
+    cell(guess.state || "None", classes[3], guess.country === answer.country && guess.state !== answer.state ? "Same country" : ""),
+    cell(guess.district, classes[4]),
+    cell(arrow(guess.rookie, answer.rookie), classes[5]),
+    cell(rankArrow(guess.rank, answer.rank), classes[6]),
+    cell(arrow(guess.epa, answer.epa), classes[7]),
+    cell(arrow(guess.win, answer.win, (value) => `${value.toFixed(1)}%`), classes[8])
   ].join("");
   guessesEl.prepend(row);
 }
@@ -160,6 +185,46 @@ function renderGuess(guess) {
 function updateStatus() {
   guessCountEl.textContent = `${guesses.length} / ${MAX_GUESSES}`;
   poolSizeEl.textContent = `${TEAMS.length} top EPA teams`;
+  progressFillEl.style.width = `${(guesses.length / MAX_GUESSES) * 100}%`;
+  emptyStateEl.hidden = guesses.length > 0;
+}
+
+function loadStats() {
+  try {
+    return {
+      played: 0,
+      wins: 0,
+      streak: 0,
+      best: null,
+      ...JSON.parse(localStorage.getItem(STATS_KEY) || "{}")
+    };
+  } catch {
+    return { played: 0, wins: 0, streak: 0, best: null };
+  }
+}
+
+function saveStats() {
+  localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+}
+
+function updateStats() {
+  statPlayedEl.textContent = stats.played;
+  statWinrateEl.textContent = stats.played ? `${Math.round((stats.wins / stats.played) * 100)}%` : "0%";
+  statStreakEl.textContent = stats.streak;
+  statBestEl.textContent = stats.best ? `${stats.best}` : "-";
+}
+
+function recordResult(won) {
+  stats.played += 1;
+  if (won) {
+    stats.wins += 1;
+    stats.streak += 1;
+    stats.best = stats.best ? Math.min(stats.best, guesses.length) : guesses.length;
+  } else {
+    stats.streak = 0;
+  }
+  saveStats();
+  updateStats();
 }
 
 function findTeam(raw) {
@@ -176,8 +241,22 @@ function findTeam(raw) {
 function revealAnswer(prefix) {
   const card = document.createElement("div");
   card.className = "answer-card";
-  card.textContent = `${prefix} ${answer.team} - ${answer.name} (${region(answer)}, ${answer.district}, ${answer.epa} EPA).`;
+  card.innerHTML = `
+    <strong>${prefix} ${answer.team} - ${answer.name}</strong>
+    <span>${region(answer)} · ${answer.district} district · #${answer.rank} EPA rank · ${answer.epa} EPA · ${answer.win.toFixed(1)}% win rate</span>
+  `;
   guessesEl.before(card);
+}
+
+function finishGame(won, message) {
+  gameOver = true;
+  resultTextEl.textContent = won ? "Solved" : "Revealed";
+  messageEl.textContent = message;
+  input.disabled = true;
+  giveUpButton.disabled = true;
+  shareButton.disabled = false;
+  emptyStateEl.hidden = true;
+  recordResult(won);
 }
 
 function submitGuess(event) {
@@ -200,21 +279,44 @@ function submitGuess(event) {
   updateStatus();
 
   if (guessedTeam.team === answer.team) {
-    gameOver = true;
-    resultTextEl.textContent = "Solved";
-    messageEl.textContent = `You got ${answer.team} in ${guesses.length} ${guesses.length === 1 ? "guess" : "guesses"}.`;
+    revealAnswer("Solved:");
+    finishGame(true, `You got ${answer.team} in ${guesses.length} ${guesses.length === 1 ? "guess" : "guesses"}.`);
     return;
   }
 
   if (guesses.length >= MAX_GUESSES) {
-    gameOver = true;
-    resultTextEl.textContent = "Out of guesses";
-    messageEl.textContent = "So close. The answer is below.";
     revealAnswer("Answer:");
+    finishGame(false, "Out of guesses. The answer is below.");
     return;
   }
 
   messageEl.textContent = "Guess logged. Follow the colors and arrows.";
+}
+
+function giveUp() {
+  if (gameOver) return;
+  revealAnswer("Answer:");
+  finishGame(false, "Revealed. Start a new team when you are ready.");
+}
+
+function shareText() {
+  const won = guesses.some((guess) => guess.team === answer.team);
+  const score = won ? `${guesses.length}/${MAX_GUESSES}` : `X/${MAX_GUESSES}`;
+  const squares = { exact: "\u{1F7E9}", close: "\u{1F7E8}", miss: "\u2B1B" };
+  const rows = guesses
+    .map((guess) => clueClasses(guess).map((className) => squares[className]).join(""))
+    .join("\n");
+  return `Botdle ${score}\n${rows}\nAnswer: ${answer.team} - ${answer.name}`;
+}
+
+async function shareGame() {
+  const text = shareText();
+  try {
+    await navigator.clipboard.writeText(text);
+    messageEl.textContent = "Result copied to clipboard.";
+  } catch {
+    messageEl.textContent = text;
+  }
 }
 
 function populateOptions() {
@@ -231,13 +333,19 @@ function resetGame() {
   guessesEl.innerHTML = "";
   document.querySelectorAll(".answer-card").forEach((card) => card.remove());
   resultTextEl.textContent = "Find the team";
-  messageEl.textContent = "Green is exact. Yellow is close or partial. Arrows point toward the answer.";
+  messageEl.textContent = "Start with a team you know. Green locks a clue, yellow means close, arrows point toward the answer.";
   input.value = "";
+  input.disabled = false;
+  giveUpButton.disabled = false;
+  shareButton.disabled = true;
   updateStatus();
+  updateStats();
   input.focus();
 }
 
 form.addEventListener("submit", submitGuess);
 newGameButton.addEventListener("click", resetGame);
+giveUpButton.addEventListener("click", giveUp);
+shareButton.addEventListener("click", shareGame);
 populateOptions();
 resetGame();

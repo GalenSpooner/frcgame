@@ -61,6 +61,22 @@ h1 {
   line-height: 0.92;
 }
 
+.tagline {
+  max-width: 520px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.top-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .ghost-button,
 .input-row button {
   border: 1px solid #6ca9b4;
@@ -78,7 +94,13 @@ h1 {
   color: var(--text);
 }
 
+.ghost-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .status-panel,
+.stats-panel,
 .guess-panel,
 .instructions,
 .table-wrap {
@@ -107,6 +129,44 @@ h1 {
   margin-top: 5px;
   overflow-wrap: anywhere;
   font-size: 1.1rem;
+}
+
+.progress-track {
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid #263027;
+  border-radius: 999px;
+  background: #0c1110;
+  margin: -4px 0 14px;
+}
+
+.progress-track span {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--exact));
+  transition: width 180ms ease;
+}
+
+.stats-panel {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.stats-panel > div {
+  min-width: 0;
+  padding: 14px 16px;
+  background: #151a17;
+}
+
+.stats-panel strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.25rem;
 }
 
 .guess-panel {
@@ -281,11 +341,30 @@ input:focus {
 }
 
 .answer-card {
-  margin-top: 14px;
-  padding: 14px;
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 16px;
   border: 1px solid #5d6b5f;
   border-radius: 8px;
   background: #202620;
+}
+
+.answer-card strong {
+  font-size: 1.2rem;
+}
+
+.answer-card span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.empty-state {
+  min-width: 980px;
+  padding: 28px 18px;
+  color: var(--muted);
+  text-align: center;
+  font-weight: 750;
 }
 
 @keyframes rise {
@@ -309,7 +388,12 @@ input:focus {
     display: grid;
   }
 
-  .status-panel {
+  .top-actions {
+    justify-content: stretch;
+  }
+
+  .status-panel,
+  .stats-panel {
     grid-template-columns: 1fr;
   }
 

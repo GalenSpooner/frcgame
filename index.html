@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Botdle</title>
-    <link rel="stylesheet" href="styles.css?v=5">
+    <link rel="stylesheet" href="styles.css?v=6">
   </head>
   <body>
     <main class="app-shell">
@@ -12,8 +12,13 @@
         <div>
           <p class="eyebrow">FRC Team Guessing Game</p>
           <h1>Botdle</h1>
+          <p class="tagline">Guess the mystery powerhouse from scouting-style clues.</p>
         </div>
-        <button id="new-game" class="ghost-button" type="button">New Team</button>
+        <div class="top-actions">
+          <button id="new-game" class="ghost-button" type="button">New Team</button>
+          <button id="give-up" class="ghost-button" type="button">Give Up</button>
+          <button id="share-game" class="ghost-button" type="button" disabled>Share</button>
+        </div>
       </header>
 
       <section class="status-panel" aria-live="polite">
@@ -30,6 +35,16 @@
           <strong id="result-text">Find the team</strong>
         </div>
       </section>
+      <div class="progress-track" aria-hidden="true">
+        <span id="progress-fill"></span>
+      </div>
+
+      <section class="stats-panel" aria-label="Player stats">
+        <div><span class="label">Played</span><strong id="stat-played">0</strong></div>
+        <div><span class="label">Win rate</span><strong id="stat-winrate">0%</strong></div>
+        <div><span class="label">Streak</span><strong id="stat-streak">0</strong></div>
+        <div><span class="label">Best</span><strong id="stat-best">-</strong></div>
+      </section>
 
       <section class="guess-panel">
         <form id="guess-form" autocomplete="off">
@@ -40,7 +55,7 @@
           </div>
           <datalist id="team-options"></datalist>
         </form>
-        <p id="message" class="message">Green is exact. Yellow is close or partial. Arrows point toward the answer.</p>
+        <p id="message" class="message">Start with a team you know. Green locks a clue, yellow means close, arrows point toward the answer.</p>
       </section>
 
       <section class="instructions" aria-label="How hints work">
@@ -76,9 +91,10 @@
           <span>Win%</span>
         </div>
         <div id="guesses" class="guesses"></div>
+        <div id="empty-state" class="empty-state">No guesses yet. Take a swing.</div>
       </section>
     </main>
 
-    <script src="script.js?v=5"></script>
+    <script src="script.js?v=6"></script>
   </body>
 </html>
