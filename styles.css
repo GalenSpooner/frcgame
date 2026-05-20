@@ -412,6 +412,21 @@ input:focus {
   font-size: 1rem;
 }
 
+.section-heading p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.player-name-label {
+  margin-top: 2px;
+}
+
+#player-name {
+  margin-bottom: 12px;
+}
+
 .share-panel textarea {
   width: 100%;
   min-height: 128px;

@@ -54,6 +54,8 @@ const TEAMS = [
 const MAX_GUESSES = 8;
 const STATS_KEY = "botdle-stats-v1";
 const LEADERBOARD_KEY = "botdle-leaderboard-v1";
+const SUPABASE_TABLE = "botdle_scores";
+const SUPABASE_CONFIG = window.BOTDLE_SUPABASE || {};
 const answerPool = TEAMS.slice(0, 30);
 TEAMS.forEach((team, index) => {
   team.rank = index + 1;
@@ -78,6 +80,9 @@ const hintChipsEl = document.querySelector("#hint-chips");
 const sharePanelEl = document.querySelector("#share-panel");
 const shareOutputEl = document.querySelector("#share-output");
 const copyShareButton = document.querySelector("#copy-share");
+const leaderboardTitleEl = document.querySelector("#leaderboard-title");
+const leaderboardStatusEl = document.querySelector("#leaderboard-status");
+const playerNameInput = document.querySelector("#player-name");
 const leaderboardListEl = document.querySelector("#leaderboard-list");
 const clearLeaderboardButton = document.querySelector("#clear-leaderboard");
 const newGameButton = document.querySelector("#new-game");
@@ -90,6 +95,22 @@ let guesses = [];
 let gameOver = false;
 let stats = loadStats();
 let leaderboard = loadLeaderboard();
+
+function supabaseReady() {
+  return Boolean(
+    SUPABASE_CONFIG.url
+    && SUPABASE_CONFIG.anonKey
+    && !SUPABASE_CONFIG.anonKey.includes("paste-your")
+  );
+}
+
+function supabaseHeaders(extra = {}) {
+  return {
+    apikey: SUPABASE_CONFIG.anonKey,
+    Authorization: `Bearer ${SUPABASE_CONFIG.anonKey}`,
+    ...extra
+  };
+}
 
 function chooseAnswer() {
   let index = Math.floor(Math.random() * answerPool.length);
@@ -233,6 +254,17 @@ function saveLeaderboard() {
   localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboard));
 }
 
+function playerName() {
+  const storedName = localStorage.getItem("botdle-player-name") || "";
+  const currentName = playerNameInput.value.trim();
+  const name = currentName || storedName || "Anonymous";
+  return name.slice(0, 24);
+}
+
+function savePlayerName() {
+  localStorage.setItem("botdle-player-name", playerName());
+}
+
 function updateStats() {
   statPlayedEl.textContent = stats.played;
   statWinrateEl.textContent = stats.played ? `${Math.round((stats.wins / stats.played) * 100)}%` : "0%";
@@ -253,25 +285,98 @@ function updateStarterHint() {
 }
 
 function updateLeaderboard() {
-  if (!leaderboard.length) {
-    leaderboardListEl.innerHTML = `<li class="leaderboard-empty">No solved games yet.</li>`;
+  leaderboardTitleEl.textContent = supabaseReady() ? "Global leaderboard" : "Local leaderboard";
+  leaderboardStatusEl.textContent = supabaseReady()
+    ? "Connected to Supabase. Wins submit globally."
+    : "Local scores until you add the Supabase anon key.";
+
+  if (supabaseReady()) {
+    fetchGlobalLeaderboard();
     return;
   }
 
-  leaderboardListEl.innerHTML = leaderboard
-    .slice(0, 7)
+  renderLeaderboard(leaderboard, "No solved games yet.");
+}
+
+function renderLeaderboard(entries, emptyText) {
+  if (!entries.length) {
+    leaderboardListEl.innerHTML = `<li class="leaderboard-empty">${emptyText}</li>`;
+    return;
+  }
+
+  leaderboardListEl.innerHTML = entries
+    .slice(0, 10)
     .map((entry, index) => `
       <li>
         <strong>#${index + 1}</strong>
-        <span>${entry.team} - ${entry.name}<small>${entry.date}</small></span>
+        <span>${entry.player ? `${entry.player} · ` : ""}${entry.team} - ${entry.name}<small>${entry.date}</small></span>
         <strong>${entry.guesses}/${MAX_GUESSES}</strong>
       </li>
     `)
     .join("");
 }
 
+async function fetchGlobalLeaderboard() {
+  const url = new URL(`${SUPABASE_CONFIG.url}/rest/v1/${SUPABASE_TABLE}`);
+  url.search = new URLSearchParams({
+    select: "player_name,guesses,team_number,team_name,created_at",
+    won: "eq.true",
+    order: "guesses.asc,created_at.asc",
+    limit: "10"
+  });
+
+  try {
+    const response = await fetch(url, {
+      headers: supabaseHeaders()
+    });
+    if (!response.ok) throw new Error(`Leaderboard fetch failed: ${response.status}`);
+    const rows = await response.json();
+    const entries = rows.map((row) => ({
+      player: row.player_name,
+      team: row.team_number,
+      name: row.team_name,
+      guesses: row.guesses,
+      date: new Date(row.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+    }));
+    renderLeaderboard(entries, "No global scores yet.");
+  } catch {
+    leaderboardStatusEl.textContent = "Supabase is configured, but the global leaderboard could not load.";
+    renderLeaderboard(leaderboard, "Showing local scores instead.");
+  }
+}
+
+async function submitGlobalScore() {
+  if (!supabaseReady()) return;
+
+  const payload = {
+    player_name: playerName(),
+    guesses: guesses.length,
+    team_number: answer.team,
+    team_name: answer.name,
+    answer_rank: answer.rank,
+    won: true
+  };
+
+  try {
+    const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/${SUPABASE_TABLE}`, {
+      method: "POST",
+      headers: supabaseHeaders({
+        "Content-Type": "application/json",
+        Prefer: "return=minimal"
+      }),
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) throw new Error(`Score submit failed: ${response.status}`);
+    leaderboardStatusEl.textContent = "Score submitted globally.";
+    await fetchGlobalLeaderboard();
+  } catch {
+    leaderboardStatusEl.textContent = "Could not submit global score. Saved locally.";
+  }
+}
+
 function addLeaderboardEntry() {
   leaderboard.push({
+    player: playerName(),
     team: answer.team,
     name: answer.name,
     guesses: guesses.length,
@@ -286,10 +391,12 @@ function addLeaderboardEntry() {
 function recordResult(won) {
   stats.played += 1;
   if (won) {
+    savePlayerName();
     stats.wins += 1;
     stats.streak += 1;
     stats.best = stats.best ? Math.min(stats.best, guesses.length) : guesses.length;
     addLeaderboardEntry();
+    submitGlobalScore();
   } else {
     stats.streak = 0;
   }
@@ -435,6 +542,7 @@ function resetGame() {
   input.disabled = false;
   giveUpButton.disabled = false;
   shareButton.disabled = true;
+  playerNameInput.value = localStorage.getItem("botdle-player-name") || "";
   sharePanelEl.hidden = true;
   shareOutputEl.value = "";
   updateStarterHint();
@@ -450,5 +558,6 @@ giveUpButton.addEventListener("click", giveUp);
 shareButton.addEventListener("click", shareGame);
 copyShareButton.addEventListener("click", copyShareOutput);
 clearLeaderboardButton.addEventListener("click", clearLeaderboard);
+playerNameInput.addEventListener("change", savePlayerName);
 populateOptions();
 resetGame();

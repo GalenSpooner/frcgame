@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Botdle</title>
-    <link rel="stylesheet" href="styles.css?v=8">
+    <link rel="stylesheet" href="styles.css?v=9">
   </head>
   <body>
     <main class="app-shell">
@@ -112,13 +112,19 @@
 
       <section class="leaderboard-panel" aria-label="Local leaderboard">
         <div class="section-heading">
-          <h2>Local leaderboard</h2>
-          <button id="clear-leaderboard" class="ghost-button" type="button">Clear</button>
+          <div>
+            <h2 id="leaderboard-title">Leaderboard</h2>
+            <p id="leaderboard-status">Local scores until Supabase is configured.</p>
+          </div>
+          <button id="clear-leaderboard" class="ghost-button" type="button">Clear Local</button>
         </div>
+        <label class="player-name-label" for="player-name">Leaderboard name</label>
+        <input id="player-name" maxlength="24" placeholder="Anonymous">
         <ol id="leaderboard-list" class="leaderboard-list"></ol>
       </section>
     </main>
 
-    <script src="script.js?v=8"></script>
+    <script src="config.js?v=1"></script>
+    <script src="script.js?v=9"></script>
   </body>
 </html>
