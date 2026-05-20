@@ -94,6 +94,12 @@ function arrow(guessValue, answerValue, formatter = (value) => value) {
   return `${formatter(guessValue)} ${direction}`;
 }
 
+function rankArrow(guessRank, answerRank) {
+  if (guessRank === answerRank) return `#${guessRank}`;
+  const direction = guessRank < answerRank ? "\u2193" : "\u2191";
+  return `#${guessRank} ${direction}`;
+}
+
 function closenessClass(key, guess) {
   if (key === "country") return guess.country === answer.country ? "exact" : "miss";
   if (key === "state") {
@@ -144,7 +150,7 @@ function renderGuess(guess) {
     cell(guess.state || "None", closenessClass("state", guess), guess.country === answer.country && guess.state !== answer.state ? "Same country" : ""),
     cell(guess.district, closenessClass("district", guess)),
     cell(arrow(guess.rookie, answer.rookie), closenessClass("rookie", guess)),
-    cell(arrow(guess.rank, answer.rank, (value) => `#${value}`), closenessClass("rank", guess)),
+    cell(rankArrow(guess.rank, answer.rank), closenessClass("rank", guess)),
     cell(arrow(guess.epa, answer.epa), closenessClass("epa", guess)),
     cell(arrow(guess.win, answer.win, (value) => `${value.toFixed(1)}%`), closenessClass("win", guess))
   ].join("");
