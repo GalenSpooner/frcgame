@@ -55,6 +55,7 @@ const MAX_GUESSES = 8;
 const STATS_KEY = "botdle-stats-v1";
 const LEADERBOARD_KEY = "botdle-leaderboard-v1";
 const ANONYMOUS_PLAYER_KEY = "botdle-anonymous-player";
+const CLIENT_ID_KEY = "botdle-client-id";
 const FIRST_WIN_NAME_PROMPT_KEY = "botdle-first-win-name-prompted";
 const COMPETITION_HINT_CACHE_KEY = "botdle-competition-hints-v1";
 const COMPETITION_HINT_CACHE_MS = 24 * 60 * 60 * 1000;
@@ -301,6 +302,17 @@ function anonymousPlayerName() {
   return name;
 }
 
+function clientId() {
+  const storedId = localStorage.getItem(CLIENT_ID_KEY);
+  if (storedId) return storedId;
+
+  const id = globalThis.crypto?.randomUUID
+    ? globalThis.crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  localStorage.setItem(CLIENT_ID_KEY, id);
+  return id;
+}
+
 function explicitPlayerName() {
   const currentName = playerNameInput.value.trim();
   const storedName = savedPlayerName();
@@ -495,20 +507,19 @@ async function submitGlobalScore() {
   if (!supabaseReady()) return;
 
   const payload = {
-    player_name: playerName(),
-    guesses: guesses.length,
-    team_number: answer.team,
-    team_name: answer.name,
-    answer_rank: answer.rank,
-    won: true
+    p_client_id: clientId(),
+    p_player_name: playerName(),
+    p_guesses: guesses.length,
+    p_team_number: answer.team,
+    p_team_name: answer.name,
+    p_answer_rank: answer.rank
   };
 
   try {
-    const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/${SUPABASE_TABLE}`, {
+    const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/rpc/submit_botdle_score`, {
       method: "POST",
       headers: supabaseHeaders({
-        "Content-Type": "application/json",
-        Prefer: "return=minimal"
+        "Content-Type": "application/json"
       }),
       body: JSON.stringify(payload)
     });
