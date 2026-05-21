@@ -309,40 +309,89 @@ function renderLeaderboard(entries, emptyText) {
     .map((entry, index) => `
       <li>
         <strong>#${index + 1}</strong>
-        <span>${entry.player ? `${entry.player} · ` : ""}${entry.team} - ${entry.name}<small>${entry.date}</small></span>
-        <strong>${entry.guesses}/${MAX_GUESSES}</strong>
+        <span>${leaderboardLabel(entry)}<small>${entry.date}</small></span>
+        <strong>${leaderboardScore(entry)}</strong>
       </li>
     `)
     .join("");
 }
 
-async function fetchGlobalLeaderboard() {
-  const url = new URL(`${SUPABASE_CONFIG.url}/rest/v1/${SUPABASE_TABLE}`);
-  url.search = new URLSearchParams({
-    select: "player_name,guesses,team_number,team_name,created_at",
-    won: "eq.true",
-    order: "guesses.asc,created_at.asc",
-    limit: "10"
-  });
+function leaderboardLabel(entry) {
+  if (entry.label) return entry.label;
+  const player = entry.player ? `${entry.player} · ` : "";
+  return `${player}${entry.team} - ${entry.name}`;
+}
 
+function leaderboardScore(entry) {
+  if (entry.score) return entry.score;
+  return `${entry.guesses}/${MAX_GUESSES}`;
+}
+
+async function fetchGlobalLeaderboard() {
   try {
-    const response = await fetch(url, {
-      headers: supabaseHeaders()
-    });
-    if (!response.ok) throw new Error(`Leaderboard fetch failed: ${response.status}`);
-    const rows = await response.json();
-    const entries = rows.map((row) => ({
-      player: row.player_name,
-      team: row.team_number,
-      name: row.team_name,
-      guesses: row.guesses,
-      date: new Date(row.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })
-    }));
-    renderLeaderboard(entries, "No global scores yet.");
+    const rows = await fetchGlobalWins();
+    renderLeaderboard(globalWinEntries(rows), "No global wins yet.");
   } catch {
     leaderboardStatusEl.textContent = "Supabase is configured, but the global leaderboard could not load.";
     renderLeaderboard(leaderboard, "Showing local scores instead.");
   }
+}
+
+async function fetchGlobalWins() {
+  const pageSize = 1000;
+  let offset = 0;
+  const rows = [];
+
+  while (true) {
+    const url = new URL(`${SUPABASE_CONFIG.url}/rest/v1/${SUPABASE_TABLE}`);
+    url.search = new URLSearchParams({
+      select: "player_name,created_at",
+      won: "eq.true",
+      order: "created_at.asc",
+      limit: String(pageSize),
+      offset: String(offset)
+    });
+
+    const response = await fetch(url, {
+      headers: supabaseHeaders()
+    });
+    if (!response.ok) throw new Error(`Leaderboard fetch failed: ${response.status}`);
+
+    const page = await response.json();
+    rows.push(...page);
+    if (page.length < pageSize) return rows;
+    offset += pageSize;
+  }
+}
+
+function globalWinEntries(rows) {
+  const players = new Map();
+
+  for (const row of rows) {
+    const player = (row.player_name || "Anonymous").trim() || "Anonymous";
+    const key = player.toLocaleLowerCase();
+    const existing = players.get(key);
+
+    if (existing) {
+      existing.wins += 1;
+      existing.latestWin = row.created_at > existing.latestWin ? row.created_at : existing.latestWin;
+    } else {
+      players.set(key, {
+        player,
+        wins: 1,
+        latestWin: row.created_at
+      });
+    }
+  }
+
+  return [...players.values()]
+    .sort((a, b) => b.wins - a.wins || new Date(a.latestWin) - new Date(b.latestWin) || a.player.localeCompare(b.player))
+    .slice(0, 10)
+    .map((entry) => ({
+      label: entry.player,
+      score: `${entry.wins} ${entry.wins === 1 ? "win" : "wins"}`,
+      date: `Latest ${new Date(entry.latestWin).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+    }));
 }
 
 async function submitGlobalScore() {
