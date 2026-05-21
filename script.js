@@ -54,6 +54,7 @@ const TEAMS = [
 const MAX_GUESSES = 8;
 const STATS_KEY = "botdle-stats-v1";
 const LEADERBOARD_KEY = "botdle-leaderboard-v1";
+const ANONYMOUS_PLAYER_KEY = "botdle-anonymous-player";
 const SUPABASE_TABLE = "botdle_scores";
 const SUPABASE_CONFIG = window.BOTDLE_SUPABASE || {};
 const answerPool = TEAMS.slice(0, 30);
@@ -255,14 +256,39 @@ function saveLeaderboard() {
 }
 
 function playerName() {
-  const storedName = localStorage.getItem("botdle-player-name") || "";
-  const currentName = playerNameInput.value.trim();
-  const name = currentName || storedName || "Anonymous";
+  const name = explicitPlayerName() || anonymousPlayerName();
   return name.slice(0, 24);
 }
 
 function savePlayerName() {
-  localStorage.setItem("botdle-player-name", playerName());
+  const name = playerNameInput.value.trim().slice(0, 24);
+  if (name) {
+    localStorage.setItem("botdle-player-name", name);
+  } else {
+    localStorage.removeItem("botdle-player-name");
+  }
+}
+
+function anonymousPlayerName() {
+  const storedName = localStorage.getItem(ANONYMOUS_PLAYER_KEY);
+  if (storedName) return storedName;
+
+  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+  const name = `Anonymous ${suffix}`;
+  localStorage.setItem(ANONYMOUS_PLAYER_KEY, name);
+  return name;
+}
+
+function explicitPlayerName() {
+  const currentName = playerNameInput.value.trim();
+  const storedName = savedPlayerName();
+  const name = currentName || storedName;
+  return name.toLocaleLowerCase() === "anonymous" ? "" : name;
+}
+
+function savedPlayerName() {
+  const storedName = localStorage.getItem("botdle-player-name") || "";
+  return storedName.toLocaleLowerCase() === "anonymous" ? "" : storedName;
 }
 
 function updateStats() {
@@ -345,7 +371,7 @@ async function fetchGlobalWins() {
   while (true) {
     const url = new URL(`${SUPABASE_CONFIG.url}/rest/v1/${SUPABASE_TABLE}`);
     url.search = new URLSearchParams({
-      select: "player_name,created_at",
+      select: "id,player_name,created_at",
       won: "eq.true",
       order: "created_at.asc",
       limit: String(pageSize),
@@ -369,7 +395,9 @@ function globalWinEntries(rows) {
 
   for (const row of rows) {
     const player = (row.player_name || "Anonymous").trim() || "Anonymous";
-    const key = player.toLocaleLowerCase();
+    const key = player.toLocaleLowerCase() === "anonymous"
+      ? `anonymous-${row.id || row.created_at}`
+      : player.toLocaleLowerCase();
     const existing = players.get(key);
 
     if (existing) {
@@ -591,7 +619,7 @@ function resetGame() {
   input.disabled = false;
   giveUpButton.disabled = false;
   shareButton.disabled = true;
-  playerNameInput.value = localStorage.getItem("botdle-player-name") || "";
+  playerNameInput.value = savedPlayerName();
   sharePanelEl.hidden = true;
   shareOutputEl.value = "";
   updateStarterHint();
