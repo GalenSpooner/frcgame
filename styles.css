@@ -31,6 +31,15 @@ input {
   font: inherit;
 }
 
+button {
+  border: 1px solid #6ca9b4;
+  border-radius: 8px;
+  background: #79c7d5;
+  color: #071012;
+  cursor: pointer;
+  font-weight: 800;
+}
+
 .app-shell {
   width: min(1120px, calc(100% - 32px));
   margin: 0 auto;
@@ -479,6 +488,55 @@ input:focus {
   font-weight: 750;
 }
 
+.name-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 8, 6, 0.72);
+  padding: 16px;
+}
+
+.name-dialog[hidden] {
+  display: none;
+}
+
+.name-dialog-card {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #151a17;
+  color: var(--text);
+  padding: 18px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+}
+
+.name-dialog h2 {
+  margin: 4px 0 0;
+  font-size: 1.3rem;
+}
+
+.name-dialog p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.name-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.name-dialog-actions button {
+  min-height: 44px;
+  padding: 0 16px;
+}
+
 .empty-state {
   min-width: 980px;
   padding: 28px 18px;
@@ -523,7 +581,12 @@ input:focus {
   }
 
   .ghost-button,
-  .input-row button {
+  .input-row button,
+  .name-dialog-actions button {
     width: 100%;
+  }
+
+  .name-dialog-actions {
+    display: grid;
   }
 }

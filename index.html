@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Botdle</title>
-    <link rel="stylesheet" href="styles.css?v=10">
+    <link rel="stylesheet" href="styles.css?v=11">
   </head>
   <body>
     <main class="app-shell">
@@ -125,7 +125,22 @@
       </section>
     </main>
 
+    <div id="name-dialog" class="name-dialog" role="dialog" aria-modal="true" aria-labelledby="name-dialog-title" hidden>
+      <form id="name-dialog-form" class="name-dialog-card" autocomplete="off">
+        <div>
+          <span class="label">First win</span>
+          <h2 id="name-dialog-title">Set your leaderboard name</h2>
+          <p>Your win can count under a real name instead of a generated anonymous one.</p>
+        </div>
+        <input id="name-dialog-input" maxlength="24" placeholder="Leaderboard name" autocomplete="nickname">
+        <div class="name-dialog-actions">
+          <button id="name-dialog-skip" class="ghost-button" value="skip" type="button">Skip</button>
+          <button id="name-dialog-save" value="save" type="submit">Save Name</button>
+        </div>
+      </form>
+    </div>
+
     <script src="config.js?v=1"></script>
-    <script src="script.js?v=12"></script>
+    <script src="script.js?v=13"></script>
   </body>
 </html>

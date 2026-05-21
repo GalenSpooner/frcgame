@@ -55,6 +55,10 @@ const MAX_GUESSES = 8;
 const STATS_KEY = "botdle-stats-v1";
 const LEADERBOARD_KEY = "botdle-leaderboard-v1";
 const ANONYMOUS_PLAYER_KEY = "botdle-anonymous-player";
+const FIRST_WIN_NAME_PROMPT_KEY = "botdle-first-win-name-prompted";
+const COMPETITION_HINT_CACHE_KEY = "botdle-competition-hints-v1";
+const COMPETITION_HINT_CACHE_MS = 24 * 60 * 60 * 1000;
+const STATBOTICS_API = "https://api.statbotics.io/v3";
 const SUPABASE_TABLE = "botdle_scores";
 const SUPABASE_CONFIG = window.BOTDLE_SUPABASE || {};
 const answerPool = TEAMS.slice(0, 30);
@@ -84,6 +88,10 @@ const copyShareButton = document.querySelector("#copy-share");
 const leaderboardTitleEl = document.querySelector("#leaderboard-title");
 const leaderboardStatusEl = document.querySelector("#leaderboard-status");
 const playerNameInput = document.querySelector("#player-name");
+const nameDialogEl = document.querySelector("#name-dialog");
+const nameDialogForm = document.querySelector("#name-dialog-form");
+const nameDialogInput = document.querySelector("#name-dialog-input");
+const nameDialogSkipButton = document.querySelector("#name-dialog-skip");
 const leaderboardListEl = document.querySelector("#leaderboard-list");
 const clearLeaderboardButton = document.querySelector("#clear-leaderboard");
 const newGameButton = document.querySelector("#new-game");
@@ -96,6 +104,8 @@ let guesses = [];
 let gameOver = false;
 let stats = loadStats();
 let leaderboard = loadLeaderboard();
+let competitionHintCache = loadCompetitionHintCache();
+let hintRequestId = 0;
 
 function supabaseReady() {
   return Boolean(
@@ -247,12 +257,24 @@ function loadLeaderboard() {
   }
 }
 
+function loadCompetitionHintCache() {
+  try {
+    return JSON.parse(localStorage.getItem(COMPETITION_HINT_CACHE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
 function saveStats() {
   localStorage.setItem(STATS_KEY, JSON.stringify(stats));
 }
 
 function saveLeaderboard() {
   localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboard));
+}
+
+function saveCompetitionHintCache() {
+  localStorage.setItem(COMPETITION_HINT_CACHE_KEY, JSON.stringify(competitionHintCache));
 }
 
 function playerName() {
@@ -298,16 +320,63 @@ function updateStats() {
   statBestEl.textContent = stats.best ? `${stats.best}` : "-";
 }
 
-function updateStarterHint() {
-  hintTitleEl.textContent = "Soft signal";
-  const hints = [
-    answer.team % 2 === 0 ? "Even-numbered team" : "Odd-numbered team",
-    answer.rookie < 2010 ? "Veteran program" : "Newer-era program",
-    answer.district === "None" ? "Plays outside the district model" : "District-system team",
-    answer.rank <= answerPool.length / 2 ? "Upper half of this pool" : "Lower half of this pool"
-  ];
-  const hint = hints[(answer.team + answer.rank) % hints.length];
-  hintChipsEl.innerHTML = `<span>${hint}</span>`;
+async function updateStarterHint() {
+  const requestId = ++hintRequestId;
+  hintTitleEl.textContent = "Last competition";
+  setHintChip("Loading event...");
+
+  try {
+    const hint = await lastCompetitionHint(answer.team);
+    if (requestId !== hintRequestId) return;
+
+    if (hint) {
+      setHintChip(hint.name);
+      return;
+    }
+  } catch {
+    if (requestId !== hintRequestId) return;
+  }
+
+  setHintChip("Competition unavailable");
+}
+
+function setHintChip(text) {
+  hintChipsEl.textContent = "";
+  const chip = document.createElement("span");
+  chip.textContent = text;
+  hintChipsEl.append(chip);
+}
+
+async function lastCompetitionHint(teamNumber) {
+  const cachedHint = competitionHintCache[teamNumber];
+  if (cachedHint && Date.now() - cachedHint.cachedAt < COMPETITION_HINT_CACHE_MS) return cachedHint;
+
+  const matches = await fetchStatbotics(`team_matches?team=${teamNumber}&limit=25&metric=time&ascending=false`);
+  const latestMatch = matches.find((match) => match.status === "Completed" && match.event);
+  if (!latestMatch) return null;
+
+  let name = latestMatch.event;
+  try {
+    const event = await fetchStatbotics(`event/${latestMatch.event}`);
+    name = event.name || name;
+  } catch {
+    name = latestMatch.event;
+  }
+
+  const hint = {
+    name,
+    event: latestMatch.event,
+    cachedAt: Date.now()
+  };
+  competitionHintCache[teamNumber] = hint;
+  saveCompetitionHintCache();
+  return hint;
+}
+
+async function fetchStatbotics(path) {
+  const response = await fetch(`${STATBOTICS_API}/${path}`);
+  if (!response.ok) throw new Error(`Statbotics request failed: ${response.status}`);
+  return response.json();
 }
 
 function updateLeaderboard() {
@@ -465,9 +534,10 @@ function addLeaderboardEntry() {
   updateLeaderboard();
 }
 
-function recordResult(won) {
+async function recordResult(won) {
   stats.played += 1;
   if (won) {
+    await promptForFirstWinName();
     savePlayerName();
     stats.wins += 1;
     stats.streak += 1;
@@ -479,6 +549,57 @@ function recordResult(won) {
   }
   saveStats();
   updateStats();
+}
+
+function shouldPromptForFirstWinName() {
+  return stats.wins === 0
+    && !explicitPlayerName()
+    && !localStorage.getItem(FIRST_WIN_NAME_PROMPT_KEY);
+}
+
+function promptForFirstWinName() {
+  if (!shouldPromptForFirstWinName() || !nameDialogEl) {
+    return Promise.resolve();
+  }
+
+  localStorage.setItem(FIRST_WIN_NAME_PROMPT_KEY, "true");
+  nameDialogInput.value = "";
+
+  return new Promise((resolve) => {
+    const finish = (name = "") => {
+      const cleanName = name.trim().slice(0, 24);
+      if (cleanName) {
+        playerNameInput.value = cleanName;
+        savePlayerName();
+      }
+
+      nameDialogForm.removeEventListener("submit", save);
+      nameDialogSkipButton.removeEventListener("click", skip);
+      nameDialogEl.removeEventListener("keydown", handleKeydown);
+      nameDialogEl.hidden = true;
+      resolve();
+    };
+
+    const save = (event) => {
+      event.preventDefault();
+      finish(nameDialogInput.value);
+    };
+
+    const skip = (event) => {
+      event.preventDefault();
+      finish();
+    };
+
+    const handleKeydown = (event) => {
+      if (event.key === "Escape") skip(event);
+    };
+
+    nameDialogForm.addEventListener("submit", save);
+    nameDialogSkipButton.addEventListener("click", skip);
+    nameDialogEl.addEventListener("keydown", handleKeydown);
+    nameDialogEl.hidden = false;
+    nameDialogInput.focus();
+  });
 }
 
 function findTeam(raw) {
@@ -502,7 +623,7 @@ function revealAnswer(prefix) {
   guessesEl.before(card);
 }
 
-function finishGame(won, message) {
+async function finishGame(won, message) {
   gameOver = true;
   resultTextEl.textContent = won ? "Solved" : "Revealed";
   messageEl.textContent = message;
@@ -511,10 +632,10 @@ function finishGame(won, message) {
   shareButton.disabled = false;
   emptyStateEl.hidden = true;
   renderShareOutput();
-  recordResult(won);
+  await recordResult(won);
 }
 
-function submitGuess(event) {
+async function submitGuess(event) {
   event.preventDefault();
   if (gameOver) return;
 
@@ -535,23 +656,23 @@ function submitGuess(event) {
 
   if (guessedTeam.team === answer.team) {
     revealAnswer("Solved:");
-    finishGame(true, `You got ${answer.team} in ${guesses.length} ${guesses.length === 1 ? "guess" : "guesses"}.`);
+    await finishGame(true, `You got ${answer.team} in ${guesses.length} ${guesses.length === 1 ? "guess" : "guesses"}.`);
     return;
   }
 
   if (guesses.length >= MAX_GUESSES) {
     revealAnswer("Answer:");
-    finishGame(false, "Out of guesses. The answer is below.");
+    await finishGame(false, "Out of guesses. The answer is below.");
     return;
   }
 
   messageEl.textContent = "Guess logged. Follow the colors and arrows.";
 }
 
-function giveUp() {
+async function giveUp() {
   if (gameOver) return;
   revealAnswer("Answer:");
-  finishGame(false, "Revealed. Start a new team when you are ready.");
+  await finishGame(false, "Revealed. Start a new team when you are ready.");
 }
 
 function shareText() {
